@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Zap,
   Shield,
+  HelpCircle,
 } from "lucide-react";
 import {
   AreaChart,
@@ -352,7 +353,83 @@ function VerdictReveal({ result, agent, onReset }: {
   );
 }
 
+// ── Turing Mode reveal component ─────────────────────────────────────────────
+
+function TuringReveal({ isAI, agentName, agentColor }: {
+  isAI: boolean; agentName: string; agentColor: string;
+}) {
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setRevealed(true), 1200);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className="glass-card p-5 border border-[#7c3aed]/30 overflow-hidden">
+      <div className="text-xs font-mono text-[#7c3aed] uppercase tracking-widest mb-4 flex items-center gap-2">
+        <Brain className="w-3.5 h-3.5" />
+        Turing Reveal
+      </div>
+      <div className="text-sm text-[#94a3b8] mb-4">
+        You faced an <strong className="text-white">unknown opponent</strong>. Here's who it really was:
+      </div>
+
+      <AnimatePresence>
+        {!revealed ? (
+          <motion.div
+            key="hidden"
+            className="flex items-center justify-center gap-3 p-4 rounded-xl border border-white/10 bg-white/[0.03]"
+          >
+            {[0, 1, 2, 3, 4].map((i) => (
+              <motion.span
+                key={i}
+                className="text-2xl font-bold font-mono text-[#475569]"
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.1 }}
+              >?</motion.span>
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="revealed"
+            initial={{ opacity: 0, scale: 0.9, rotateY: 90 }}
+            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+            transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
+            className="flex items-center gap-4 p-4 rounded-xl border"
+            style={{
+              borderColor: isAI ? `${agentColor}40` : "rgba(0,255,157,0.3)",
+              backgroundColor: isAI ? `${agentColor}08` : "rgba(0,255,157,0.05)",
+            }}
+          >
+            <div className="text-4xl">{isAI ? "🤖" : "👤"}</div>
+            <div>
+              <div className="text-xl font-bold mb-0.5" style={{ color: isAI ? agentColor : "#00ff9d" }}>
+                {isAI ? agentName : "Human Trader"}
+              </div>
+              <div className="text-sm text-[#94a3b8]">
+                {isAI
+                  ? `${agentName} AI — you were facing a machine`
+                  : "Another human challenger — you faced one of your own"}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <p className="text-xs text-[#475569] mt-3 text-center">
+        This is the Turing Test. {revealed ? (isAI ? "Could you tell?" : "Did you suspect?") : ""}
+      </p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ChallengePage() {
+  const [turingMode, setTuringMode] = useState(false);
+  const [turingIsAI] = useState(() => Math.random() > 0.35); // 65% AI, 35% "human"
+
   const [phase, setPhase] = useState<ChallengePhase>("setup");
   const [selectedAgent, setSelectedAgent] = useState<Agent>(AGENTS[0]);
   const [selectedPair, setSelectedPair] = useState<TradingPair>("ETH/USDT");
@@ -432,11 +509,68 @@ export default function ChallengePage() {
           <Zap className="w-3 h-3" />
           Challenge Simulator
         </div>
-        <h1 className="text-4xl sm:text-5xl font-bold text-white">
-          Face the <span className="text-gradient-verdict">Machine</span>
-        </h1>
-        <p className="text-[#94a3b8] mt-2">Select your opponent, make your call. Let Mantle decide.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-bold text-white">
+              {turingMode ? (
+                <>The <span className="text-gradient-verdict">Turing Test</span></>
+              ) : (
+                <>Face the <span className="text-gradient-verdict">Machine</span></>
+              )}
+            </h1>
+            <p className="text-[#94a3b8] mt-2">
+              {turingMode
+                ? "You won't know if your opponent is AI or human until the verdict."
+                : "Select your opponent, make your call. Let Mantle decide."}
+            </p>
+          </div>
+
+          {/* Turing Mode toggle */}
+          {phase === "setup" && (
+            <motion.button
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              onClick={() => setTuringMode((m) => !m)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-300 whitespace-nowrap sm:ml-auto",
+                turingMode
+                  ? "border-[#7c3aed]/50 bg-[#7c3aed]/15 text-[#7c3aed] shadow-glow-violet"
+                  : "border-white/10 text-[#94a3b8] hover:border-[#7c3aed]/30 hover:text-[#7c3aed]"
+              )}
+            >
+              <HelpCircle className="w-4 h-4" />
+              Turing Mode
+              {turingMode && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#7c3aed] animate-pulse" />
+              )}
+            </motion.button>
+          )}
+        </div>
       </motion.div>
+
+      {/* Turing Mode banner */}
+      <AnimatePresence>
+        {turingMode && phase === "setup" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-6 overflow-hidden"
+          >
+            <div className="p-4 rounded-xl border border-[#7c3aed]/30 bg-[#7c3aed]/08 flex items-start gap-3">
+              <Brain className="w-5 h-5 text-[#7c3aed] flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="text-sm font-bold text-[#7c3aed] mb-1">TURING MODE ACTIVE</div>
+                <p className="text-xs text-[#94a3b8] leading-relaxed">
+                  Your opponent is hidden. You'll face either an AI agent or another human trader —
+                  you won't know which until the Verdict is revealed. The true Turing Test.
+                  Can you tell the difference?
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Phase progress */}
       <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
@@ -467,41 +601,55 @@ export default function ChallengePage() {
           {/* Agent selector */}
           <div className="glass-card p-5">
             <div className="text-xs font-mono text-[#94a3b8] uppercase tracking-wider mb-3">
-              Select Opponent
+              {turingMode ? "Opponent" : "Select Opponent"}
             </div>
-            <div className="grid grid-cols-1 gap-2">
-              {AGENTS.map((agent) => (
-                <button
-                  key={agent.id}
-                  onClick={() => phase === "setup" && setSelectedAgent(agent)}
-                  disabled={phase !== "setup"}
-                  className={cn(
-                    "flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 border",
-                    selectedAgent.id === agent.id
-                      ? "bg-white/[0.05]"
-                      : "border-transparent hover:bg-white/[0.03]",
-                    phase !== "setup" && "cursor-not-allowed"
-                  )}
-                  style={selectedAgent.id === agent.id ? {
-                    borderColor: `${agent.color}30`,
-                  } : undefined}
-                >
-                  <span
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: agent.color, boxShadow: `0 0 6px ${agent.color}` }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold font-mono" style={{ color: selectedAgent.id === agent.id ? agent.color : "#f0f4ff" }}>
-                      {agent.name}
+
+            {turingMode ? (
+              /* Turing Mode: mystery opponent */
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-[#7c3aed]/30 bg-[#7c3aed]/08">
+                <div className="w-8 h-8 rounded-full border-2 border-[#7c3aed]/40 border-dashed flex items-center justify-center text-[#7c3aed]">
+                  <HelpCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold font-mono text-[#7c3aed]">UNKNOWN</div>
+                  <div className="text-xs text-[#475569]">AI or Human — revealed at verdict</div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2">
+                {AGENTS.map((agent) => (
+                  <button
+                    key={agent.id}
+                    onClick={() => phase === "setup" && setSelectedAgent(agent)}
+                    disabled={phase !== "setup"}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 border",
+                      selectedAgent.id === agent.id
+                        ? "bg-white/[0.05]"
+                        : "border-transparent hover:bg-white/[0.03]",
+                      phase !== "setup" && "cursor-not-allowed"
+                    )}
+                    style={selectedAgent.id === agent.id ? {
+                      borderColor: `${agent.color}30`,
+                    } : undefined}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: agent.color, boxShadow: `0 0 6px ${agent.color}` }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold font-mono" style={{ color: selectedAgent.id === agent.id ? agent.color : "#f0f4ff" }}>
+                        {agent.name}
+                      </div>
+                      <div className="text-xs text-[#475569] truncate">{agent.strategy}</div>
                     </div>
-                    <div className="text-xs text-[#475569] truncate">{agent.strategy}</div>
-                  </div>
-                  <span className="text-xs font-mono text-[#94a3b8] flex-shrink-0">
-                    {agent.winRate}%
-                  </span>
-                </button>
-              ))}
-            </div>
+                    <span className="text-xs font-mono text-[#94a3b8] flex-shrink-0">
+                      {agent.winRate}%
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Trading pair */}
@@ -614,7 +762,9 @@ export default function ChallengePage() {
                     {selectedPair} — What's your move?
                   </div>
                   <div className="text-sm text-[#94a3b8]">
-                    {selectedAgent.name} is already analyzing the same data.
+                    {turingMode
+                      ? "Your opponent has already made their decision."
+                      : `${selectedAgent.name} is already analyzing the same data.`}
                   </div>
                   {countdown > 0 && (
                     <div className="mt-3 text-3xl font-bold font-mono" style={{
@@ -644,12 +794,12 @@ export default function ChallengePage() {
               >
                 <div className="glass-card p-4 flex items-center gap-3 border-[#7c3aed]/20">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: `${selectedAgent.color}20` }}>
-                    <Brain className="w-5 h-5" style={{ color: selectedAgent.color }} />
+                    style={{ backgroundColor: turingMode ? "rgba(124,58,237,0.2)" : `${selectedAgent.color}20` }}>
+                    <Brain className="w-5 h-5" style={{ color: turingMode ? "#7c3aed" : selectedAgent.color }} />
                   </div>
                   <div>
-                    <div className="text-sm font-bold" style={{ color: selectedAgent.color }}>
-                      {selectedAgent.name} is analyzing...
+                    <div className="text-sm font-bold" style={{ color: turingMode ? "#7c3aed" : selectedAgent.color }}>
+                      {turingMode ? "Opponent is deciding..." : `${selectedAgent.name} is analyzing...`}
                     </div>
                     <div className="text-xs text-[#94a3b8]">Your decision: <span className="font-mono font-bold text-white">{humanDecision}</span></div>
                   </div>
@@ -737,7 +887,16 @@ export default function ChallengePage() {
                 </div>
 
                 {phase === "verdict" && result && (
-                  <VerdictReveal result={result} agent={selectedAgent} onReset={handleReset} />
+                  <>
+                    <VerdictReveal result={result} agent={selectedAgent} onReset={handleReset} />
+                    {turingMode && (
+                      <TuringReveal
+                        isAI={turingIsAI}
+                        agentName={selectedAgent.name}
+                        agentColor={selectedAgent.color}
+                      />
+                    )}
+                  </>
                 )}
               </motion.div>
             )}
@@ -749,19 +908,25 @@ export default function ChallengePage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="glass-card p-8 flex flex-col items-center justify-center text-center min-h-[300px] gap-4"
-                style={{ borderColor: `${selectedAgent.color}15` }}
+                style={{ borderColor: turingMode ? "rgba(124,58,237,0.2)" : `${selectedAgent.color}15` }}
               >
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                  style={{ backgroundColor: `${selectedAgent.color}15`, border: `1px solid ${selectedAgent.color}30` }}>
-                  <Brain className="w-8 h-8" style={{ color: selectedAgent.color }} />
+                  style={turingMode
+                    ? { backgroundColor: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)" }
+                    : { backgroundColor: `${selectedAgent.color}15`, border: `1px solid ${selectedAgent.color}30` }}>
+                  {turingMode
+                    ? <HelpCircle className="w-8 h-8 text-[#7c3aed]" />
+                    : <Brain className="w-8 h-8" style={{ color: selectedAgent.color }} />}
                 </div>
                 <div>
-                  <div className="text-xl font-bold font-mono mb-1" style={{ color: selectedAgent.color }}>
-                    {selectedAgent.name}
+                  <div className="text-xl font-bold font-mono mb-1" style={{ color: turingMode ? "#7c3aed" : selectedAgent.color }}>
+                    {turingMode ? "???" : selectedAgent.name}
                   </div>
-                  <div className="text-sm text-[#94a3b8] mb-1">{selectedAgent.tagline}</div>
+                  <div className="text-sm text-[#94a3b8] mb-1">
+                    {turingMode ? "Unknown Opponent" : selectedAgent.tagline}
+                  </div>
                   <div className="text-xs text-[#475569]">
-                    Win Rate: <span className="text-white font-mono">{selectedAgent.winRate}%</span>
+                    Win Rate: <span className="text-white font-mono">{turingMode ? "??.?%" : `${selectedAgent.winRate}%`}</span>
                     {" · "}
                     {selectedAgent.totalTrades.toLocaleString()} trades
                   </div>

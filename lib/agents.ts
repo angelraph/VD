@@ -1,5 +1,14 @@
 import type { Agent, PerformancePoint } from "@/types";
 
+// Each agent quote is displayed prominently — they are characters, not scripts
+export const AGENT_QUOTES: Record<string, string> = {
+  oracle: "I have analyzed 2.3 billion candles. I already know what you're going to do.",
+  rift:   "Every market has cracks. I live in them.",
+  pulse:  "Trends don't lie. Traders do.",
+  nova:   "Fear is information. Greed is just louder.",
+  cipher: "The pattern was there 600 years ago. You just couldn't see it.",
+};
+
 function generatePerformance(
   baseline: number,
   volatility: number,
