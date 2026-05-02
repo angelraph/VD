@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import WalletProvider from "@/components/providers/WalletProvider";
 
 export const metadata: Metadata = {
   title: "VERDICT Protocol — Human vs AI Trading Intelligence",
@@ -32,9 +33,11 @@ export default function RootLayout({
       </head>
       <body className="neural-bg grid-bg min-h-screen">
         <div className="fixed inset-0 neural-bg grid-bg pointer-events-none" />
-        <Navbar />
-        <main className="relative z-10">{children}</main>
-        <Footer />
+        <WalletProvider>
+          <Navbar />
+          <main className="relative z-10">{children}</main>
+          <Footer />
+        </WalletProvider>
       </body>
     </html>
   );

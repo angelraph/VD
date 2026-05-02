@@ -12,35 +12,59 @@ interface WalletConnectProps {
 }
 
 export default function WalletConnect({ compact = false }: WalletConnectProps) {
-  const { address, isConnected, balance, isConnecting, isWrongNetwork, connect, disconnect } =
+  const { address, isConnected, balance, isConnecting, isWrongNetwork, error, connect, disconnect } =
     useWallet();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const noMetaMask = typeof window !== "undefined" && !(window as any).ethereum;
 
   if (!isConnected) {
+    if (noMetaMask) {
+      return (
+        <a
+          href="https://metamask.io/download/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "rounded-xl font-semibold tracking-wide transition-all duration-300 flex items-center gap-2",
+            compact ? "px-4 py-2 text-xs" : "px-5 py-2.5 text-sm",
+            "border border-[#fbbf24]/30 text-[#fbbf24] hover:bg-[#fbbf24]/10"
+          )}
+        >
+          <Wallet className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
+          Install MetaMask
+        </a>
+      );
+    }
+
     return (
-      <button
-        onClick={connect}
-        disabled={isConnecting}
-        className={cn(
-          "relative overflow-hidden rounded-xl font-semibold tracking-wide transition-all duration-300 flex items-center gap-2",
-          compact ? "px-4 py-2 text-xs" : "px-5 py-2.5 text-sm",
-          "bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-[#020917]",
-          "hover:shadow-[0_0_20px_rgba(0,212,255,0.4)] hover:-translate-y-0.5",
-          isConnecting && "opacity-70 cursor-not-allowed"
+      <div className="flex flex-col items-end gap-1">
+        <button
+          onClick={connect}
+          disabled={isConnecting}
+          className={cn(
+            "relative overflow-hidden rounded-xl font-semibold tracking-wide transition-all duration-300 flex items-center gap-2",
+            compact ? "px-4 py-2 text-xs" : "px-5 py-2.5 text-sm",
+            "bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-[#020917]",
+            "hover:shadow-[0_0_20px_rgba(0,212,255,0.4)] hover:-translate-y-0.5",
+            isConnecting && "opacity-70 cursor-not-allowed"
+          )}
+        >
+          {isConnecting ? (
+            <>
+              <span className="w-3 h-3 rounded-full border-2 border-[#020917]/30 border-t-[#020917] animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            <>
+              <Wallet className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
+              {compact ? "Connect" : "Connect Wallet"}
+            </>
+          )}
+        </button>
+        {error && !compact && (
+          <span className="text-[10px] text-[#ff3366] max-w-[180px] text-right leading-tight">{error}</span>
         )}
-      >
-        {isConnecting ? (
-          <>
-            <span className="w-3 h-3 rounded-full border-2 border-[#020917]/30 border-t-[#020917] animate-spin" />
-            Connecting...
-          </>
-        ) : (
-          <>
-            <Wallet className={compact ? "w-3.5 h-3.5" : "w-4 h-4"} />
-            {compact ? "Connect" : "Connect Wallet"}
-          </>
-        )}
-      </button>
+      </div>
     );
   }
 
