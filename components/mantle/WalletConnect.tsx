@@ -5,6 +5,7 @@ import { Wallet, CheckCircle2, AlertCircle, ChevronDown, ExternalLink, LogOut } 
 import { useWallet } from "@/hooks/useWallet";
 import { formatAddress, MANTLE_TESTNET } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { switchToMantle } from "@/lib/contract";
 
 interface WalletConnectProps {
   compact?: boolean;
@@ -45,9 +46,12 @@ export default function WalletConnect({ compact = false }: WalletConnectProps) {
 
   if (isWrongNetwork) {
     return (
-      <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[#ff3366]/10 border border-[#ff3366]/30 text-[#ff3366] hover:bg-[#ff3366]/20 transition-all">
+      <button
+        onClick={switchToMantle}
+        className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[#ff3366]/10 border border-[#ff3366]/30 text-[#ff3366] hover:bg-[#ff3366]/20 transition-all"
+      >
         <AlertCircle className="w-3.5 h-3.5" />
-        Wrong Network
+        Switch to Mantle
       </button>
     );
   }

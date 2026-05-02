@@ -14,6 +14,8 @@ import {
   Zap,
   Shield,
   HelpCircle,
+  Share2,
+  AlertCircle,
 } from "lucide-react";
 import {
   AreaChart,
@@ -31,6 +33,8 @@ import {
   runSimulation,
 } from "@/lib/simulation";
 import { mockSubmitChallenge, getMantleExplorerUrl } from "@/lib/mantle";
+import { recordVerdictOnChain, isContractDeployed, switchToMantle } from "@/lib/contract";
+import { useWallet } from "@/hooks/useWallet";
 import type {
   Agent,
   Decision,
@@ -179,24 +183,62 @@ function ThinkingTerminal({ steps, agent }: { steps: ThinkingStep[]; agent: Agen
   );
 }
 
-function VerdictReveal({ result, agent, onReset }: {
-  result: ChallengeResult; agent: Agent; onReset: () => void;
+function VerdictReveal({ result, agent, pair, onReset }: {
+  result: ChallengeResult; agent: Agent; pair: TradingPair; onReset: () => void;
 }) {
+  const { isConnected, isWrongNetwork, connect } = useWallet();
   const [txSubmitted, setTxSubmitted] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [txBlock, setTxBlock] = useState<number | null>(null);
+  const [explorerUrl, setExplorerUrl] = useState<string | null>(null);
+  const [txError, setTxError] = useState<string | null>(null);
+  const [isOnChain, setIsOnChain] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
+  const contractDeployed = isContractDeployed();
+
+  // Auto-submit mock when no contract is deployed yet
   useEffect(() => {
-    const submitTx = async () => {
+    if (contractDeployed) return;
+    const run = async () => {
       await sleep(1500);
-      const tx = await mockSubmitChallenge(agent.id, "ETH/USDT", result.aiDecision);
+      const tx = await mockSubmitChallenge(agent.id, pair, result.aiDecision);
       setTxHash(tx.hash);
+      setExplorerUrl(getMantleExplorerUrl(tx.hash));
+      setTxBlock(result.blockNumber ?? null);
       setTxSubmitted(true);
     };
-    submitTx();
-  }, [agent.id, result.aiDecision]);
+    run();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRecordOnChain = async () => {
+    setSubmitting(true);
+    setTxError(null);
+    try {
+      const receipt = await recordVerdictOnChain({
+        agentName: agent.id,
+        pair,
+        humanReturn: result.humanReturn,
+        aiReturn: result.aiReturn,
+        winner: result.winner,
+      });
+      setTxHash(receipt.txHash);
+      setTxBlock(receipt.blockNumber);
+      setExplorerUrl(receipt.explorerUrl);
+      setIsOnChain(true);
+      setTxSubmitted(true);
+    } catch (err: any) {
+      setTxError((err?.message ?? "Transaction failed").slice(0, 80));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const isAiWinner = result.winner === "ai";
   const isHumanWinner = result.winner === "human";
+
+  const shareText = `I just ${isHumanWinner ? "beat" : result.winner === "tie" ? "tied" : "lost to"} ${agent.name} AI on ${pair} | ${result.humanReturn >= 0 ? "+" : ""}${result.humanReturn.toFixed(2)}% vs ${result.aiReturn >= 0 ? "+" : ""}${result.aiReturn.toFixed(2)}% | Can YOU pass the Turing Test? #VERDICTProtocol #Mantle #DeFi`;
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
 
   return (
     <motion.div
@@ -230,12 +272,7 @@ function VerdictReveal({ result, agent, onReset }: {
         <div className="glass-card p-4 text-center">
           <div className="text-xs font-mono text-[#94a3b8] mb-2 uppercase">Your Decision</div>
           <div className="text-base font-bold text-white mb-1">{result.humanDecision}</div>
-          <div
-            className={cn(
-              "text-2xl font-bold font-mono",
-              result.humanReturn >= 0 ? "text-[#00ff9d]" : "text-[#ff3366]"
-            )}
-          >
+          <div className={cn("text-2xl font-bold font-mono", result.humanReturn >= 0 ? "text-[#00ff9d]" : "text-[#ff3366]")}>
             {formatPnl(result.humanReturn)}
           </div>
         </div>
@@ -244,12 +281,7 @@ function VerdictReveal({ result, agent, onReset }: {
             {agent.name}
           </div>
           <div className="text-base font-bold text-white mb-1">{result.aiDecision}</div>
-          <div
-            className={cn(
-              "text-2xl font-bold font-mono",
-              result.aiReturn >= 0 ? "text-[#00ff9d]" : "text-[#ff3366]"
-            )}
-          >
+          <div className={cn("text-2xl font-bold font-mono", result.aiReturn >= 0 ? "text-[#00ff9d]" : "text-[#ff3366]")}>
             {formatPnl(result.aiReturn)}
           </div>
         </div>
@@ -258,9 +290,7 @@ function VerdictReveal({ result, agent, onReset }: {
       {/* Verdict score */}
       <div className="glass-card p-4">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-xs font-mono text-[#94a3b8] uppercase tracking-wider">
-            Verdict Score
-          </span>
+          <span className="text-xs font-mono text-[#94a3b8] uppercase tracking-wider">Verdict Score</span>
           <span className="text-xs font-mono" style={{ color: agent.color }}>
             AI: {result.verdictScore.toFixed(1)} / Human: {(100 - result.verdictScore).toFixed(1)}
           </span>
@@ -268,10 +298,7 @@ function VerdictReveal({ result, agent, onReset }: {
         <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
           <motion.div
             className="h-full rounded-full"
-            style={{
-              background: `linear-gradient(90deg, ${agent.color}, #ff3366)`,
-              width: `${result.verdictScore}%`,
-            }}
+            style={{ background: `linear-gradient(90deg, ${agent.color}, #ff3366)`, width: `${result.verdictScore}%` }}
             initial={{ width: 0 }}
             animate={{ width: `${result.verdictScore}%` }}
             transition={{ duration: 1.5, ease: "easeOut" }}
@@ -281,9 +308,7 @@ function VerdictReveal({ result, agent, onReset }: {
 
       {/* AI reasoning preview */}
       <div className="glass-card p-4">
-        <div className="text-xs font-mono text-[#94a3b8] uppercase tracking-wider mb-3">
-          {agent.name} Reasoning
-        </div>
+        <div className="text-xs font-mono text-[#94a3b8] uppercase tracking-wider mb-3">{agent.name} Reasoning</div>
         <div className="space-y-2">
           {result.reasoning.slice(0, 3).map((r, i) => (
             <div key={i} className="flex items-start gap-2 text-xs">
@@ -298,16 +323,75 @@ function VerdictReveal({ result, agent, onReset }: {
       <div className="glass-card p-4 border-[#00d4ff]/10">
         <div className="flex items-center gap-2 mb-3">
           <Shield className="w-4 h-4 text-[#00d4ff]" />
-          <span className="text-xs font-mono text-[#00d4ff] uppercase tracking-wider">
-            On-Chain Proof
-          </span>
+          <span className="text-xs font-mono text-[#00d4ff] uppercase tracking-wider">On-Chain Proof</span>
+          {isOnChain && (
+            <span className="ml-auto text-[10px] font-mono text-[#00ff9d] bg-[#00ff9d]/10 px-2 py-0.5 rounded-full border border-[#00ff9d]/20">
+              LIVE
+            </span>
+          )}
         </div>
-        {txSubmitted && txHash ? (
+
+        {!contractDeployed && !txSubmitted && (
+          <div className="flex items-center gap-2 text-xs text-[#94a3b8]">
+            <span className="w-3 h-3 rounded-full border-2 border-[#00d4ff]/30 border-t-[#00d4ff] animate-spin" />
+            Submitting to Mantle...
+          </div>
+        )}
+
+        {contractDeployed && !txSubmitted && !submitting && (
+          <div className="space-y-2">
+            {!isConnected ? (
+              <>
+                <p className="text-xs text-[#94a3b8] mb-2">Connect your wallet to record this verdict permanently on Mantle Sepolia.</p>
+                <button
+                  onClick={connect}
+                  className="w-full py-2 rounded-xl text-xs font-semibold border border-[#00d4ff]/30 text-[#00d4ff] hover:bg-[#00d4ff]/10 transition-all"
+                >
+                  Connect Wallet to Record
+                </button>
+              </>
+            ) : isWrongNetwork ? (
+              <>
+                <p className="text-xs text-[#94a3b8] mb-2">Switch to Mantle Sepolia to record on-chain.</p>
+                <button
+                  onClick={switchToMantle}
+                  className="w-full py-2 rounded-xl text-xs font-semibold border border-[#fbbf24]/30 text-[#fbbf24] hover:bg-[#fbbf24]/10 transition-all"
+                >
+                  Switch to Mantle Sepolia
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleRecordOnChain}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-[#00d4ff]/10 to-[#7c3aed]/10 border border-[#00d4ff]/30 text-[#00d4ff] hover:from-[#00d4ff]/20 hover:to-[#7c3aed]/20 transition-all flex items-center justify-center gap-2"
+              >
+                <Shield className="w-4 h-4" />
+                Record Verdict on Mantle
+              </button>
+            )}
+          </div>
+        )}
+
+        {submitting && (
+          <div className="flex items-center gap-2 text-xs text-[#94a3b8]">
+            <span className="w-3 h-3 rounded-full border-2 border-[#00d4ff]/30 border-t-[#00d4ff] animate-spin" />
+            Submitting to Mantle Sepolia...
+          </div>
+        )}
+
+        {txError && (
+          <div className="flex items-center gap-2 text-xs text-[#ff3366]">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+            {txError}
+          </div>
+        )}
+
+        {txSubmitted && txHash && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-[#475569]">Tx Hash</span>
               <a
-                href={getMantleExplorerUrl(txHash)}
+                href={explorerUrl ?? getMantleExplorerUrl(txHash)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 text-xs font-mono text-[#00d4ff] hover:text-white transition-colors"
@@ -316,19 +400,18 @@ function VerdictReveal({ result, agent, onReset }: {
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[#475569]">Block</span>
-              <span className="text-xs font-mono text-white">#{result.blockNumber}</span>
-            </div>
+            {txBlock && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[#475569]">Block</span>
+                <span className="text-xs font-mono text-white">#{txBlock}</span>
+              </div>
+            )}
             <div className="flex items-center gap-1.5 mt-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-[#00ff9d]" />
-              <span className="text-xs text-[#00ff9d]">Recorded on Mantle Sepolia</span>
+              <span className="text-xs text-[#00ff9d]">
+                {isOnChain ? "Permanently on Mantle Sepolia" : "Recorded on Mantle Sepolia"}
+              </span>
             </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-xs text-[#94a3b8]">
-            <span className="w-3 h-3 rounded-full border-2 border-[#00d4ff]/30 border-t-[#00d4ff] animate-spin" />
-            Submitting to Mantle...
           </div>
         )}
       </div>
@@ -336,11 +419,20 @@ function VerdictReveal({ result, agent, onReset }: {
       <div className="flex gap-3">
         <button
           onClick={onReset}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border border-white/10 text-[#94a3b8] hover:text-white hover:border-white/20 transition-all"
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold border border-white/10 text-[#94a3b8] hover:text-white hover:border-white/20 transition-all"
         >
           <RotateCcw className="w-4 h-4" />
           New Challenge
         </button>
+        <a
+          href={twitterUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border border-[#7c3aed]/20 text-[#7c3aed] hover:bg-[#7c3aed]/10 transition-all"
+        >
+          <Share2 className="w-4 h-4" />
+          Share
+        </a>
         <a
           href="/ledger"
           className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border border-[#00d4ff]/20 text-[#00d4ff] hover:bg-[#00d4ff]/10 transition-all"
@@ -888,7 +980,7 @@ export default function ChallengePage() {
 
                 {phase === "verdict" && result && (
                   <>
-                    <VerdictReveal result={result} agent={selectedAgent} onReset={handleReset} />
+                    <VerdictReveal result={result} agent={selectedAgent} pair={selectedPair} onReset={handleReset} />
                     {turingMode && (
                       <TuringReveal
                         isAI={turingIsAI}

@@ -89,21 +89,50 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## Deploy Your Own Contract
+## Deploy the Contract (Remix IDE — 5 minutes)
 
-```bash
-# Install Hardhat
-npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox
+No Hardhat needed. Deploy directly from your browser:
 
-# Set env vars
-cp .env.example .env
-# Add your PRIVATE_KEY and MANTLE_RPC_URL
+### Step 1 — Open Remix
+Go to **[remix.ethereum.org](https://remix.ethereum.org)** and create a new file called `VerdictProtocol.sol`.
 
-# Deploy to Mantle Sepolia
-npx hardhat run scripts/deploy.ts --network mantleSepolia
-```
+### Step 2 — Paste the contract
+Copy the full contents of [`contracts/VerdictProtocol.sol`](./contracts/VerdictProtocol.sol) and paste it into Remix.
 
-Or deploy instantly via [Remix IDE](https://remix.ethereum.org) — paste `contracts/VerdictProtocol.sol`, compile, and deploy to Mantle Sepolia (Chain ID: 5003).
+### Step 3 — Compile
+- Select the **Solidity Compiler** tab (left sidebar)
+- Set compiler version to **`0.8.20`**
+- Click **Compile VerdictProtocol.sol**
+- Ensure it compiles with no errors
+
+### Step 4 — Connect MetaMask to Mantle Sepolia
+Add the network to MetaMask if you haven't already:
+
+| Field | Value |
+|---|---|
+| Network Name | Mantle Sepolia Testnet |
+| RPC URL | `https://rpc.sepolia.mantle.xyz` |
+| Chain ID | `5003` |
+| Currency Symbol | `MNT` |
+| Block Explorer | `https://explorer.sepolia.mantle.xyz` |
+
+Get free testnet MNT from the [Mantle Sepolia faucet](https://faucet.sepolia.mantle.xyz).
+
+### Step 5 — Deploy
+- Select the **Deploy & Run Transactions** tab
+- Set environment to **Injected Provider - MetaMask**
+- Confirm MetaMask is on Mantle Sepolia (Chain 5003)
+- Click **Deploy** → confirm the MetaMask transaction
+- Copy the **deployed contract address** from the left panel
+
+### Step 6 — Wire up the frontend
+Add the contract address to Vercel:
+
+1. Go to your Vercel project → **Settings → Environment Variables**
+2. Add: `NEXT_PUBLIC_VERDICT_CONTRACT_ADDRESS` = `0xYourContractAddress`
+3. Redeploy — the frontend now records every verdict on Mantle in real-time
+
+> The app automatically falls back to a mock transaction when no address is set, so it works out of the box without deploying first.
 
 ---
 
@@ -124,14 +153,16 @@ app/
   page.tsx              # Landing — interactive hero challenge
   arena/page.tsx        # Agent Arena — all 5 agents with radar charts
   challenge/page.tsx    # Challenge Simulator + Turing Mode
+  leaderboard/page.tsx  # Global Rankings — live on-chain + mock fallback
   ledger/page.tsx       # On-chain Reputation Ledger
   explainability/       # AI Decision Explainability Panel
 contracts/
   VerdictProtocol.sol   # Main contract — verdicts stored on Mantle
 lib/
   agents.ts             # Agent data + performance history
+  contract.ts           # ethers.js v6 — real on-chain calls
   simulation.ts         # Trading simulation engine
-  mantle.ts             # Contract interactions + wallet
+  mantle.ts             # Mock fallback + wallet helpers
 ```
 
 ---

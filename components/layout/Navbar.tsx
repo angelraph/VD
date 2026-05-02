@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { href: "/arena", label: "Agent Arena", icon: "⚡" },
   { href: "/challenge", label: "Challenge", icon: "⚔" },
+  { href: "/leaderboard", label: "Leaderboard", icon: "🏆" },
   { href: "/ledger", label: "Ledger", icon: "📜" },
   { href: "/explainability", label: "Explainability", icon: "🧠" },
 ];
