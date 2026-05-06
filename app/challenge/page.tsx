@@ -730,14 +730,15 @@ function VerdictReveal({
 
   const fmt = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
   const sharePageUrl = `https://vd-o8ml.vercel.app/share?winner=${result.winner}&pair=${encodeURIComponent(pair)}&human=${result.humanReturn.toFixed(2)}&ai=${result.aiReturn.toFixed(2)}&agent=${encodeURIComponent(agent.name)}`;
+  const ogImageUrl   = `/api/og?winner=${result.winner}&pair=${encodeURIComponent(pair)}&human=${result.humanReturn.toFixed(2)}&ai=${result.aiReturn.toFixed(2)}&agent=${encodeURIComponent(agent.name)}`;
 
   const shareText = isHumanWinner
-    ? `Just beat an AI at its own game 🏆\n\nMe: ${fmt(result.humanReturn)} vs ${agent.name} AI: ${fmt(result.aiReturn)}\nPair: ${pair} — verdict locked on @0xMantle forever\n\nThink you can do it? 👇\n#VERDICTProtocol #Mantle #DeFi`
+    ? `Just beat an AI at its own game 🏆\n\nMe: ${fmt(result.humanReturn)} | ${agent.name} AI: ${fmt(result.aiReturn)}\n${pair} — verdict locked on @0xMantle\n\nThink you can do it? 👇\n${sharePageUrl}\n\n#VERDICTProtocol #Mantle #DeFi`
     : isAiWinner
-    ? `The AI won this round 🤖\n\n${agent.name} AI: ${fmt(result.aiReturn)} vs Me: ${fmt(result.humanReturn)}\nPair: ${pair} on @0xMantle\n\nRematch incoming — you try:\n#VERDICTProtocol #Mantle #DeFi`
-    : `Tied an AI in a live trading battle 🤝\n\nBoth got ${fmt(result.humanReturn)} on ${pair}\nWhen human intuition meets machine logic on @0xMantle\n\nCan YOU tell the difference?\n#VERDICTProtocol #Mantle #DeFi`;
+    ? `The AI won this round 🤖\n\n${agent.name} AI: ${fmt(result.aiReturn)} | Me: ${fmt(result.humanReturn)}\n${pair} on @0xMantle\n\nRematch incoming — you try:\n${sharePageUrl}\n\n#VERDICTProtocol #Mantle #DeFi`
+    : `Tied an AI in a live trading battle 🤝\n\nBoth: ${fmt(result.humanReturn)} on ${pair}\nHuman intuition vs machine logic on @0xMantle\n\n${sharePageUrl}\n\n#VERDICTProtocol #Mantle #DeFi`;
 
-  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(sharePageUrl)}`;
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
 
   return (
     <StepShell>
@@ -920,6 +921,21 @@ function VerdictReveal({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Share preview card */}
+        <div className="glass-card overflow-hidden rounded-xl border-[#7c3aed]/20">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
+            <span className="text-[10px] font-mono text-[#475569] uppercase tracking-widest">Share preview</span>
+            <span className="text-[10px] font-mono text-[#7c3aed]">appears on X / Twitter</span>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={ogImageUrl}
+            alt="Verdict share card"
+            className="w-full"
+            style={{ aspectRatio: "1200/630" }}
+          />
         </div>
 
         {/* Action buttons */}
