@@ -728,8 +728,16 @@ function VerdictReveal({
     }
   };
 
-  const shareText = `I just ${isHumanWinner ? "beat" : result.winner === "tie" ? "tied" : "lost to"} ${agent.name} AI on ${pair} | ${result.humanReturn >= 0 ? "+" : ""}${result.humanReturn.toFixed(2)}% vs ${result.aiReturn >= 0 ? "+" : ""}${result.aiReturn.toFixed(2)}% | Can YOU pass the Turing Test? #VERDICTProtocol #Mantle #DeFi`;
-  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+  const fmt = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+  const sharePageUrl = `https://vd-o8ml.vercel.app/share?winner=${result.winner}&pair=${encodeURIComponent(pair)}&human=${result.humanReturn.toFixed(2)}&ai=${result.aiReturn.toFixed(2)}&agent=${encodeURIComponent(agent.name)}`;
+
+  const shareText = isHumanWinner
+    ? `Just beat an AI at its own game 🏆\n\nMe: ${fmt(result.humanReturn)} vs ${agent.name} AI: ${fmt(result.aiReturn)}\nPair: ${pair} — verdict locked on @0xMantle forever\n\nThink you can do it? 👇\n#VERDICTProtocol #Mantle #DeFi`
+    : isAiWinner
+    ? `The AI won this round 🤖\n\n${agent.name} AI: ${fmt(result.aiReturn)} vs Me: ${fmt(result.humanReturn)}\nPair: ${pair} on @0xMantle\n\nRematch incoming — you try:\n#VERDICTProtocol #Mantle #DeFi`
+    : `Tied an AI in a live trading battle 🤝\n\nBoth got ${fmt(result.humanReturn)} on ${pair}\nWhen human intuition meets machine logic on @0xMantle\n\nCan YOU tell the difference?\n#VERDICTProtocol #Mantle #DeFi`;
+
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(sharePageUrl)}`;
 
   return (
     <StepShell>
